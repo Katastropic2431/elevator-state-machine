@@ -34,6 +34,9 @@ pub mod elevator {
         }
 
         pub fn go_to_floor(&mut self, floor: u8) {
+            if self.target_floor.contains(&floor) {
+                return;
+            }
             match self.state {
                 ElevatorState::Idle => {
                     if floor <= self.max_floor && floor != self.current_floor {
@@ -66,7 +69,7 @@ pub mod elevator {
             if self.state == ElevatorState::Idle {
                 self.door_open = true;
                 self.state = ElevatorState::DoorOpen;
-                self.timer = 60; // door stays open for 60 ticks
+                self.timer = 10; // door stays open for 10 ticks
             }
         }
 
@@ -92,7 +95,8 @@ pub mod elevator {
                         if self.current_floor == next_floor {
                             self.target_floor.pop_front();
                             self.state = ElevatorState::DoorOpen;
-                            self.timer = 60; // door stays open for 60 ticks
+                            self.door_open = true;
+                            self.timer = 10; // door stays open for 10 ticks
                         }
                     } else {
                         self.state = ElevatorState::Idle;

@@ -1,4 +1,6 @@
 use iced::widget::{button, column, row, text, Column, Row};
+use std::thread::sleep;
+use std::time::Duration;
 
 #[derive(Default)]
 struct Counter {
@@ -6,44 +8,76 @@ struct Counter {
 }
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
-    Increment,
-    Decrement,
+    RequestFloor(u8),
+    Tick,
+    OpenDoor,
+    CloseDoor,
 }
 mod elevator;
 
 use elevator::elevator::Elevator;
-use elevator::states;
-use iced::Element;
+use iced::Subscription;
+use iced::{time, Element};
+struct App {
+    elevator: Elevator,
+    max_floor: u8,
+}
 
-impl Counter {
-    pub fn view(&self) -> Element<Message> {
-        // We use a column: a simple vertical layout
+impl App {
+    fn new() -> Self {
+        let max_floor = 10;
+        Self {
+            elevator: Elevator::new(max_floor),
+            max_floor,
+        }
+    }
+
+    // simulate a timer tick every second
+    fn subscription(&self) -> Subscription<Message> {
+        iced::time::every(Duration::from_millis(1000)).map(|_| Message::Tick)
+    }
+    // Iced calls this whenever a Message is produced
+    fn update(&mut self, message: Message) {
+        match message {
+            Message::RequestFloor(f) => self.elevator.go_to_floor(f),
+            Message::Tick => self.elevator.tick(),
+            Message::OpenDoor => self.elevator.open_door(),
+            Message::CloseDoor => self.elevator.close_door(),
+        }
+    }
+
+    // builds the ui based on current state
+    fn view(&self) -> Element<Message> {
+        // floor selection buttons 0..=max_floor
+        let mut floors: Row<Message> = row![];
+        for f in 0..=self.max_floor {
+            floors = floors.push(button(text(f.to_string())).on_press(Message::RequestFloor(f)));
+        }
+
+        // controls
+        let controls: Row<Message> = row![
+            button("Tick").on_press(Message::Tick),
+            button("Open").on_press(Message::OpenDoor),
+            button("Close").on_press(Message::CloseDoor),
+        ];
+
+        // status
+        let status = text(self.elevator.status()).center();
+
         column![
-            // The increment button. We tell it to produce an
-            // `Increment` message when pressed
-            button("+").on_press(Message::Increment),
-            // We show the value of the counter here
-            text(self.value).size(50),
-            // The decrement button. We tell it to produce a
-            // `Decrement` message when pressed
-            button("-").on_press(Message::Decrement),
+            text("Elevator Simulator").size(24),
+            status,
+            floors,
+            controls,
         ]
         .into()
     }
-    pub fn update(&mut self, message: Message) {
-        match message {
-            Message::Increment => {
-                self.value += 1;
-            }
-            Message::Decrement => {
-                self.value -= 1;
-            }
-        }
-    }
 }
-fn main() -> iced::Result {
-    let mut elevator = Elevator::new(10);
-    elevator.go_to_floor(5);
-    println!("Elevator is now on floor {}", elevator.status());
-    iced::run("A cool counter", Counter::update, Counter::view)
+
+pub fn main() -> iced::Result {
+    // run the application
+    iced::application("Elevator", App::update, App::view)
+        .subscription(App::subscription)
+        .centered()
+        .run_with(|| (App::new(), iced::Task::none()))
 }
