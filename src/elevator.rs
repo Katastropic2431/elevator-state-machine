@@ -21,7 +21,7 @@ pub mod elevator {
         timer: u8,
     }
 
-    impl Elevator {
+    impl Elevator { 
         pub fn new(max_floor: u8) -> Self {
             Self {
                 current_floor: 0,
@@ -31,6 +31,14 @@ pub mod elevator {
                 state: ElevatorState::Idle,
                 timer: 0,
             }
+        }
+
+        pub fn current_floor(&self) -> u8 {
+            self.current_floor
+        }
+
+        pub fn state(&self) -> ElevatorState {
+            self.state
         }
 
         pub fn go_to_floor(&mut self, floor: u8) {
