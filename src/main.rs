@@ -88,7 +88,7 @@ impl<Message> canvas::Program<Message> for ElevatorShaft {
             car_bottom_y - 40.0,                  
         );
 
-        let car = Path::rectangle(car_top_left, Size::new(40.0, 40.0));
+        let car = Path::rectangle(car_top_left, CAR_SIZE);
         frame.fill(&car, Color::from_rgb(0.1, 0.9, 0.5));
 
         vec![frame.into_geometry()]
