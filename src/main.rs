@@ -5,7 +5,6 @@ use iced::{
 };
 use iced::widget::canvas::{self, Canvas, Frame, Path, Stroke, Geometry};
 
-
 use std::time::{Duration, Instant};
 
 use elevator::elevator::Elevator;
@@ -104,12 +103,17 @@ fn approach(current: f32, target: f32, max_delta: f32) -> f32 {
 impl App {
     fn new() -> Self {
     let max_floor = TOTAL_FLOORS;
-        Self {
+        let mut app =Self {
             elevator: Elevator::new(max_floor),
             max_floor,
             car_pos_px: 0.0,
             last_tick: Instant::now(),
-        }
+        };
+        app.elevator.enable_audio_from_files(
+            "sounds/jazz-lounge-elevator-music-332339.mp3",
+            "sounds/elevator-ding-at-arenco-tower-dubai-38520.mp3",
+        );
+        app
     }
 
     // simulate a timer tick every second

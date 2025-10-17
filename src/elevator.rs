@@ -11,7 +11,66 @@ pub mod states {
 pub mod elevator {
     use super::states::ElevatorState;
     use std::collections::VecDeque;
-    #[derive(Debug)]
+    use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
+    use std::fs::File;
+    use std::io::BufReader;
+    use std::path::{Path, PathBuf};
+
+
+    struct ElevatorAudio {
+        stream: OutputStream,    
+        music_sink: Sink,
+        ding_sink: Sink,         
+        music_path: PathBuf,
+        ding_path: PathBuf,
+    }
+
+    impl ElevatorAudio {
+        fn new(music_path: impl AsRef<Path>, ding_path: impl AsRef<Path>) -> Self {
+
+            let stream = OutputStreamBuilder::open_default_stream()
+                .expect("open default audio stream");
+
+
+            let music_sink = Sink::connect_new(&stream.mixer());
+            let ding_sink = Sink::connect_new(&stream.mixer());
+
+            Self {
+                stream,
+                music_sink,
+                ding_sink,
+                music_path: music_path.as_ref().to_path_buf(),
+                ding_path: ding_path.as_ref().to_path_buf(),
+            }
+        }
+
+        fn play_ding(&self, volume: f32) {
+            if let Ok(file) = File::open(&self.ding_path) {
+                if let Ok(src) = Decoder::try_from(BufReader::new(file)) {
+                    self.ding_sink.set_volume(volume);
+                    self.ding_sink.append(src);
+                }
+            }
+        }
+
+        fn start_music(&mut self, volume: f32) {
+            let sink = Sink::connect_new(&self.stream.mixer());
+            if let Ok(file) = File::open(&self.music_path) {
+                if let Ok(src) = Decoder::try_from(BufReader::new(file)) {
+                    sink.set_volume(volume);
+                    sink.append(src.repeat_infinite());
+                    self.music_sink = sink;
+                }
+            }
+        }
+
+        fn stop_music(&mut self) {
+            self.music_sink.stop();
+            self.music_sink = Sink::connect_new(&self.stream.mixer());
+        }
+    }
+
+
     pub struct Elevator {
         current_floor: u8,
         max_floor: u8,
@@ -19,6 +78,7 @@ pub mod elevator {
         target_floor: VecDeque<u8>,
         state: ElevatorState,
         timer: u8,
+        audio: Option<ElevatorAudio>,
     }
 
     impl Elevator { 
@@ -30,7 +90,16 @@ pub mod elevator {
                 target_floor: VecDeque::new(),
                 state: ElevatorState::Idle,
                 timer: 0,
+                audio: None,
             }
+        }
+
+        pub fn enable_audio_from_files(
+            &mut self,
+            music_path: impl AsRef<Path>,
+            ding_path: impl AsRef<Path>,
+        ) {
+            self.audio = Some(ElevatorAudio::new(music_path, ding_path));
         }
 
         pub fn current_floor(&self) -> u8 {
@@ -49,6 +118,9 @@ pub mod elevator {
                 ElevatorState::Idle => {
                     if floor <= self.max_floor && floor != self.current_floor {
                         self.target_floor.push_back(floor);
+                        if let Some(a) = self.audio.as_mut() {
+                            a.start_music(0.25);
+                        }
                         self.state = ElevatorState::Moving;
                     }
                 }
@@ -104,6 +176,11 @@ pub mod elevator {
                             self.target_floor.pop_front();
                             self.state = ElevatorState::DoorOpen;
                             self.door_open = true;
+                            // stop moving music
+                            if let Some(a) = self.audio.as_mut() {
+                                a.stop_music();
+                                a.play_ding(0.5);
+                            }
                             self.timer = 10; // door stays open for 10 ticks
                         }
                     } else {
