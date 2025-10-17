@@ -118,8 +118,9 @@ pub mod elevator {
                 ElevatorState::Idle => {
                     if floor <= self.max_floor && floor != self.current_floor {
                         self.target_floor.push_back(floor);
+                        // start moving music
                         if let Some(a) = self.audio.as_mut() {
-                            a.start_music(0.25);
+                            a.start_music(0.2);
                         }
                         self.state = ElevatorState::Moving;
                     }
@@ -159,6 +160,9 @@ pub mod elevator {
                 ElevatorState::Idle => {
                     if let Some(&next_floor) = self.target_floor.front() {
                         if next_floor != self.current_floor {
+                            if let Some(a) = self.audio.as_mut() {
+                                a.start_music(0.2);
+                            }
                             self.state = ElevatorState::Moving;
                         }
                     }
